@@ -4,7 +4,8 @@ import argparse
 import cv2
 import time
 import os
-from moveCube import home,mount,photo
+from moveCube.moves import *
+from moveCube.handles import *
 from rubikscolorresolver.solver import resolve_colors
 
 directory = '../tmp'
