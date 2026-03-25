@@ -96,6 +96,10 @@ def dualMove (action: str):
                     port = 8
                     action1 = rIn
                     action2 = lIn
+                case 'Home':
+                    port = 0
+                    action1 = rHome
+                    action2 = lHome
                 case 'Left':
                     port = 0
                     action1 = rLeft
@@ -120,10 +124,14 @@ def dualMove (action: str):
                     port = 10
                     action1 = uIn
                     action2 = dIn
+                case 'Home':
+                    port = 2
+                    action1 = uHome
+                    action2 = dHome
                 case 'Left':
                     port = 2
-                    action1 = rLeft
-                    action2 = lRight
+                    action1 = uLeft
+                    action2 = dRight
                 case 'Right':
                     port = 2
                     action1 = uRight
