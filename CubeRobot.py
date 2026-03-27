@@ -331,33 +331,47 @@ class WebcamApp:
         self.results_text.delete(1.0, tk.END)
         self.results_text.insert(tk.END, "Scanning... this may take 10-20s while twophase tables load\n")
 
-        # Pause the live preview so the scan thread can reuse self.cap
+        # Stop the live preview loop
         if self.after_id is not None:
             self.root.after_cancel(self.after_id)
             self.after_id = None
 
-        thread = threading.Thread(target=self.run_photo_thread)
+        # Release the preview capture so the scan thread can open its own.
+        # DirectShow / MSMF on Windows locks the device exclusively, and
+        # COM capture objects have thread affinity, so the scan thread
+        # must create its own VideoCapture.
+        camera_index = int(self.cam_index.get())
+        if self.cap is not None:
+            try:
+                self.cap.release()
+            except Exception:
+                pass
+            self.cap = None
+
+        thread = threading.Thread(target=self.run_photo_thread, args=(camera_index,))
         thread.daemon = True
         thread.start()
 
     def _resume_preview(self):
-        """Resume the live camera preview after scanning."""
+        """Reopen the preview camera and restart the live preview loop."""
+        self.open_camera(self.cam_index.get())
         if self.cap is not None and self.after_id is None:
             self.schedule_next()
 
-    def run_photo_thread(self):
+    def run_photo_thread(self, camera_index):
         tmp_dir = Path('tmp')
         tmp_dir.mkdir(parents=True, exist_ok=True)
 
-        # Reuse the already-open preview camera (self.cap)
-        if self.cap is None or not self.cap.isOpened():
-            self.root.after(0, lambda: self.results_text.insert(tk.END, "Camera is not available\n"))
+        # Open a fresh capture on this thread (avoids COM thread-affinity issues)
+        cap, be = self.try_open(camera_index)
+        if cap is None:
+            self.root.after(0, lambda: self.results_text.insert(tk.END, f"Could not open camera {camera_index}\n"))
             self.root.after(0, self._resume_preview)
             return
 
         # warm up camera auto-exposure/white balance before first useful frame
         for _ in range(6):
-            self.cap.read()
+            cap.read()
             time.sleep(0.1)
 
         # capture cube faces in scanning order
@@ -367,8 +381,9 @@ class WebcamApp:
             photo(side_name)
             time.sleep(2)
 
-            ret, frame = self.cap.read()
+            ret, frame = cap.read()
             if not ret or frame is None or frame.size == 0:
+                cap.release()
                 self.root.after(0, lambda: self.results_text.insert(tk.END, f"Camera read failed for {side_name}\n"))
                 self.root.after(0, self._resume_preview)
                 return
@@ -378,6 +393,8 @@ class WebcamApp:
 
             self.root.after(0, lambda s=side_name, p=str(croppedfile): self._update_face_thumbnail(s, p))
             self.root.after(0, lambda s=side_name: self.status.config(text=f"Captured {s}"))
+
+        cap.release()
 
         # load the six faces from captured photos
         list_colors = []
@@ -461,11 +478,11 @@ class WebcamApp:
             self.results_text.delete('1.0', tk.END)
             self.results_text.insert(tk.END, "Scan complete.\n")
 
-        def resume_after_ui():
+        def update_ui_and_resume():
             update_ui()
             self._resume_preview()
 
-        self.root.after(0, resume_after_ui)
+        self.root.after(0, update_ui_and_resume)
 
 
 if __name__ == "__main__":
