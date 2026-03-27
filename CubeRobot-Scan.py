@@ -132,13 +132,13 @@ class WebcamApp:
 
         button_opts = dict(master=self.button_frame, width=12, height=1, padx=0, pady=0)
 
-        self.home_button = tk.Button(**button_opts, text="Home", command=home())
+        self.home_button = tk.Button(**button_opts, text="Home", command=home)
         self.home_button.pack(anchor="w", padx=(0, 8), pady=2)
 
-        self.park_button = tk.Button(**button_opts, text="Park", command=park())
+        self.park_button = tk.Button(**button_opts, text="Park", command=park)
         self.park_button.pack(anchor="w", padx=(0, 8), pady=2)
 
-        self.mount_button = tk.Button(**button_opts, text="Mount", command=mount())
+        self.mount_button = tk.Button(**button_opts, text="Mount", command=mount)
         self.mount_button.pack(anchor="w", padx=(0, 8), pady=2)
 
         self.scan_button = tk.Button(**button_opts, text="Scan", command=self.run_scan)
