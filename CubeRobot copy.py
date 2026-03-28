@@ -143,7 +143,6 @@ class WebcamApp:
         self.mount_button.pack(anchor="w", padx=(0, 8), pady=2)
 
         self.scan_button = tk.Button(**button_opts, text="Scan", command=self.run_scan)
-        #self.scan_button = tk.Button(**button_opts, text="Scan", command=self.run_photo)
         self.scan_button.pack(anchor="w", padx=(0, 8), pady=2)
 
         #self.solve_button = tk.Button(**button_opts, text="Solve", command=self.run_solve)
@@ -164,7 +163,6 @@ class WebcamApp:
         self.backend_used = None
         self.after_id = None
         self.imgtk_ref = None
-        self._preview_stopped = threading.Event()
 
         # Discover available cameras and build radios
         self.available = self.find_available_cameras(MAX_INDEX)
@@ -181,7 +179,7 @@ class WebcamApp:
             self.open_camera(self.cam_index.get())
             self.schedule_next()
 
-        # Clean close handling (prevents your after() error) [1](https://learn.microsoft.com/en-us/training/modules/configure-user-experience-settings/?WT.mc_id=api_CatalogApi&sso=viva-learning)
+        # Clean close handling
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def _center(self, w, h):
@@ -315,7 +313,7 @@ class WebcamApp:
         self.preview.config(image=imgtk)
 
     def on_close(self):
-        # Cancel scheduled after job to avoid "invalid command name ... (after script)" [1](https://learn.microsoft.com/en-us/training/modules/configure-user-experience-settings/?WT.mc_id=api_CatalogApi&sso=viva-learning)
+        # Cancel scheduled after job to avoid "invalid command name ... (after script)"
         try:
             if self.after_id is not None:
                 self.root.after_cancel(self.after_id)
@@ -347,23 +345,6 @@ class WebcamApp:
         if self.cap is not None and self.after_id is None:
             self.schedule_next()
 
-    def _pause_preview_sync(self):
-        """Call from background thread to pause preview and wait until stopped."""
-        self._preview_stopped.clear()
-        self.root.after(0, self._do_pause_preview)
-        self._preview_stopped.wait(timeout=2.0)
-
-    def _do_pause_preview(self):
-        """Runs on main thread. Cancels the preview loop and signals the event."""
-        if self.after_id is not None:
-            self.root.after_cancel(self.after_id)
-            self.after_id = None
-        self._preview_stopped.set()
-
-    def _resume_preview_async(self):
-        """Call from background thread to resume preview on main thread."""
-        self.root.after(0, self._resume_preview)
-
     def run_photo_thread(self):
         tmp_dir = Path('tmp')
         tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -379,18 +360,12 @@ class WebcamApp:
             self.cap.read()
             time.sleep(0.1)
 
-        # Resume preview so user can see robot movements
-        self._resume_preview_async()
-
         # capture cube faces in scanning order
         for side_name in ("F", "R", "B", "L", "U", "D"):
             croppedfile = tmp_dir / f"rubiks-{side_name}.png"
 
             photo(side_name)
             time.sleep(2)
-
-            # Pause preview to get exclusive camera access for capture
-            self._pause_preview_sync()
 
             # Flush stale buffered frames so we capture a fresh image
             for _ in range(CAPTURE_FLUSH_READS):
@@ -404,9 +379,6 @@ class WebcamApp:
 
             cropped = frame[10:390, 140:520]
             cv2.imwrite(str(croppedfile), cropped)
-
-            # Resume preview after capture
-            self._resume_preview_async()
 
             self.root.after(0, lambda s=side_name, p=str(croppedfile): self._update_face_thumbnail(s, p))
             self.root.after(0, lambda s=side_name: self.status.config(text=f"Captured {s}"))

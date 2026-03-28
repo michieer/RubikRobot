@@ -5,7 +5,7 @@ import serial
 from subprocess import Popen
 import moveCube.servo as servo
 
-with open('config.json', mode='r', encoding='utf-8') as jsonFile:
+with open('config/config.json', mode='r', encoding='utf-8') as jsonFile:
     config = json.load(jsonFile)
 
 serialDevice = config['serial'][os.name]

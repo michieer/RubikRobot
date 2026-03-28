@@ -1,8 +1,9 @@
 import json
 import cv2
+import os
 import threading
 import tkinter as tk
-import twophase.solver as tp
+import analyzeCube.twophase.solver as tp
 from pathlib import Path
 from PIL import Image, ImageTk
 from moveCube.moves import photo
@@ -157,28 +158,7 @@ class WebcamApp:
         # helper for live face updates during scan
         self.face_image_refs = {**self.face_image_refs}
 
-        # Camera state
-        self.cap = None
-        self.backend_used = None
-        self.after_id = None
-        self.imgtk_ref = None
-
-        # Discover available cameras and build radios
-        self.available = self.find_available_cameras(MAX_INDEX)
-        self.cam_index = tk.IntVar(value=self.available[0] if self.available else 0)
-
-        if not self.available:
-            self.status.config(
-                text=f"No usable cameras found in indices 0..{MAX_INDEX-1}.\n"
-                     f"Close Teams/Zoom/Browser camera use and try again.",
-                fg="red"
-            )
-        else:
-            self.build_radiobuttons(self.available)
-            self.open_camera(self.cam_index.get())
-            self.schedule_next()
-
-        # Clean close handling (prevents your after() error) [1](https://learn.microsoft.com/en-us/training/modules/configure-user-experience-settings/?WT.mc_id=api_CatalogApi&sso=viva-learning)
+        # Clean close handling (prevents your after() error)
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def _center(self, w, h):
@@ -201,130 +181,8 @@ class WebcamApp:
         except Exception as ex:
             self.root.after(0, lambda: self.results_text.insert(tk.END, f"Failed to show {side_name}: {ex}\n"))
 
-    def try_open(self, index):
-        for be in BACKENDS:
-            c = cv2.VideoCapture(index, be)
-            if c.isOpened():
-                return c, be
-            c.release()
-        return None, None
-
-    def is_usable_camera(self, index):
-        cap, be = self.try_open(index)
-        if cap is None:
-            return False
-
-        ok_frame = False
-        try:
-            # Read a few frames; first frame can be black on some setups
-            for _ in range(PROBE_READS):
-                ok, frame = cap.read()
-                if ok and frame is not None and frame.size > 0 and frame.mean() >= BLACK_MEAN_THRESHOLD:
-                    ok_frame = True
-                    break
-        finally:
-            cap.release()
-
-        return ok_frame
-
-    def find_available_cameras(self, max_index):
-        found = []
-        for i in range(max_index):
-            if self.is_usable_camera(i):
-                found.append(i)
-        return found
-
-    def build_radiobuttons(self, indices):
-        # Clear old radios
-        for w in self.rb_frame.winfo_children():
-            w.destroy()
-
-        tk.Label(self.rb_frame, text="Camera:", bg="white", fg="black",
-                 font=("Segoe UI", 10, "bold")).pack(anchor="w")
-
-        for idx in indices:
-            tk.Radiobutton(
-                self.rb_frame,
-                text=f"{idx}",
-                value=idx,
-                variable=self.cam_index,
-                command=self.on_camera_change,
-                bg="white",
-                fg="black",
-                activebackground="white",
-                activeforeground="black",
-                selectcolor="white",
-                anchor="w"
-            ).pack(side="left", padx=8)
-
-    def open_camera(self, index):
-        # Release existing camera
-        if self.cap is not None:
-            try:
-                self.cap.release()
-            except:
-                pass
-            self.cap = None
-
-        cap, be = self.try_open(index)
-        self.cap = cap
-        self.backend_used = be
-
-        if self.cap is None:
-            self.status.config(text=f"Could not open camera {index}.", fg="red")
-
-        # Clear image on switch
-        self.preview.config(image="")
-        self.imgtk_ref = None
-
-    def on_camera_change(self):
-        self.open_camera(self.cam_index.get())
-
-    def schedule_next(self):
-        self.update_frame()
-        self.after_id = self.root.after(UPDATE_MS, self.schedule_next)
-
-    def update_frame(self):
-        if self.cap is None:
-            return
-
-        ok, frame = self.cap.read()
-        if not ok or frame is None or frame.size == 0:
-            self.status.config(
-                text=f"Read failed on camera {self.cam_index.get()} (backend={self.backend_used}).",
-                fg="red"
-            )
-            return
-
-        if frame.mean() < BLACK_MEAN_THRESHOLD:
-            self.status.config(
-                text=(f"Black frame from camera {self.cam_index.get()} (backend={self.backend_used}).\n"
-                      f"Try another camera."),
-                fg="red"
-            )
-            return
-
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame = cv2.resize(frame, (PREVIEW_W, PREVIEW_H), interpolation=cv2.INTER_AREA)
-
-        imgtk = ImageTk.PhotoImage(Image.fromarray(frame))
-        self.imgtk_ref = imgtk  # keep reference!
-        self.preview.config(image=imgtk)
-
     def on_close(self):
-        # Cancel scheduled after job to avoid "invalid command name ... (after script)" [1](https://learn.microsoft.com/en-us/training/modules/configure-user-experience-settings/?WT.mc_id=api_CatalogApi&sso=viva-learning)
-        try:
-            if self.after_id is not None:
-                self.root.after_cancel(self.after_id)
-                self.after_id = None
-        except:
-            pass
-
-        try:
-            if self.cap is not None:
-                self.cap.release()
-        finally:
-            self.root.destroy()
+        self.root.destroy()
 
     def run_scan(self):
         self.results_text.delete(1.0, tk.END)
@@ -416,7 +274,10 @@ class WebcamApp:
                     color = face_color_map.get(cube_face_letter, face_color_map.get(face_name, '#fff'))
                     canvas.create_rectangle(x, y, x + cell_size, y + cell_size, fill=color, outline="#000")
 
-            self.result_line.config(text=f"Kociemba: {kociemba_string} \nSolution: {twoPhase}")
+            solution = (twoPhase.split(' '))[:-1]
+            steps = len(solution)
+    
+            self.result_line.config(text=f"Kociemba: {kociemba_string} \nSolution: {twoPhase} \nMoves: {str(steps)}")
             self.results_text.delete('1.0', tk.END)
             self.results_text.insert(tk.END, "Scan complete.\n")
 
