@@ -1,8 +1,9 @@
 import json
 import cv2
+import os
 import threading
 import tkinter as tk
-import twophase.solver as tp
+import analyzeCube.twophase.solver as tp
 from pathlib import Path
 from PIL import Image, ImageTk
 from moveCube.moves import photo
@@ -416,7 +417,10 @@ class WebcamApp:
                     color = face_color_map.get(cube_face_letter, face_color_map.get(face_name, '#fff'))
                     canvas.create_rectangle(x, y, x + cell_size, y + cell_size, fill=color, outline="#000")
 
-            self.result_line.config(text=f"Kociemba: {kociemba_string} \nSolution: {twoPhase}")
+            solution = (twoPhase.split(' '))[:-1]
+            steps = len(solution)
+    
+            self.result_line.config(text=f"Kociemba: {kociemba_string} \nSolution: {twoPhase} \nMoves: {str(steps)}")
             self.results_text.delete('1.0', tk.END)
             self.results_text.insert(tk.END, "Scan complete.\n")
 

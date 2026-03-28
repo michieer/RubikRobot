@@ -3,7 +3,7 @@ import json
 import threading
 import time
 import tkinter as tk
-import twophase.solver as tp
+import analyzeCube.twophase.solver as tp
 from analyzeCube.cubeTracker import extract_colors_from_image
 from analyzeCube.colorresolver.solver import resolve_colors
 from moveCube.handles import *
@@ -32,6 +32,7 @@ UPDATE_MS = 15
 # Probe settings
 PROBE_READS = 3                      # read a few frames (some cams return 1st frame black)
 BLACK_MEAN_THRESHOLD = 1.0           # below this = treat as "black frame"
+CAPTURE_FLUSH_READS = 5              # frames to discard before capture (flush stale buffer)
 # -----------------------
 
 
@@ -367,6 +368,10 @@ class WebcamApp:
             photo(side_name)
             time.sleep(2)
 
+            # Flush stale buffered frames so we capture a fresh image
+            for _ in range(CAPTURE_FLUSH_READS):
+                self.cap.read()
+
             ret, frame = self.cap.read()
             if not ret or frame is None or frame.size == 0:
                 self.root.after(0, lambda: self.results_text.insert(tk.END, f"Camera read failed for {side_name}\n"))
@@ -381,14 +386,18 @@ class WebcamApp:
 
         # load the six faces from captured photos
         list_colors = []
-        for side_name in ("U", "L", "F", "R", "B", "D"):
-            image_path = tmp_dir / f"rubiks-{side_name}.png"
-            if not image_path.exists():
-                self.root.after(0, lambda: self.results_text.insert(tk.END, f"Missing image {image_path}\n"))
-                return
+        for side_name in ("U", "L", "F", "R", "B", "D", "finish"):
+            if side_name != "finish":
+                image_path = tmp_dir / f"rubiks-{side_name}.png"
+                if not image_path.exists():
+                    self.root.after(0, lambda: self.results_text.insert(tk.END, f"Missing image {image_path}\n"))
+                    return
 
-            colors = extract_colors_from_image(str(image_path))
-            list_colors.append(colors)
+                colors = extract_colors_from_image(str(image_path))
+                list_colors.append(colors)
+            else:
+                photo(side_name)
+                break
 
         data = {}
         square_index = 1
@@ -457,7 +466,10 @@ class WebcamApp:
                     color = face_color_map.get(cube_face_letter, face_color_map.get(face_name, '#fff'))
                     canvas.create_rectangle(x, y, x + cell_size, y + cell_size, fill=color, outline="#000")
 
-            self.result_line.config(text=f"Kociemba: {kociemba_string} \nSolution: {twoPhase}")
+            solution = (twoPhase.split(' '))[:-1]
+            steps = len(solution)
+    
+            self.result_line.config(text=f"Kociemba: {kociemba_string} \nSolution: {twoPhase} \nMoves: {str(steps)}")
             self.results_text.delete('1.0', tk.END)
             self.results_text.insert(tk.END, "Scan complete.\n")
 
