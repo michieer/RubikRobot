@@ -44,6 +44,9 @@ class WebcamApp:
         self.root.configure(bg="white")
         self._center(MAIN_W, MAIN_H)
 
+        # Solution state (set after a successful scan/analyze)
+        self.solution = None
+        
         # Main container: left for results, right for camera controls
         self.main_container = tk.Frame(root, bg="white")
         self.main_container.pack(fill="both", expand=True)
@@ -342,6 +345,13 @@ class WebcamApp:
         thread.daemon = True
         thread.start()
 
+    def run_solve(self):
+        if self.solution is None:
+            self.results_text.delete(1.0, tk.END)
+            self.results_text.insert(tk.END, "No solution available. Please run Scan first to analyze the cube.\n")
+            return
+        SolveCube(self.solution)
+
     def _resume_preview(self):
         """Resume the live camera preview after scanning."""
         if self.cap is not None and self.after_id is None:
@@ -493,6 +503,7 @@ class WebcamApp:
                     color = face_color_map.get(cube_face_letter, face_color_map.get(face_name, '#fff'))
                     canvas.create_rectangle(x, y, x + cell_size, y + cell_size, fill=color, outline="#000")
 
+            self.solution = twoPhase
             solution = (twoPhase.split(' '))[:-1]
             steps = len(solution)
     
