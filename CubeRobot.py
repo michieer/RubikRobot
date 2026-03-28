@@ -32,6 +32,7 @@ UPDATE_MS = 15
 # Probe settings
 PROBE_READS = 3                      # read a few frames (some cams return 1st frame black)
 BLACK_MEAN_THRESHOLD = 1.0           # below this = treat as "black frame"
+CAPTURE_FLUSH_READS = 5              # frames to discard before capture (flush stale buffer)
 # -----------------------
 
 
@@ -366,6 +367,10 @@ class WebcamApp:
 
             photo(side_name)
             time.sleep(2)
+
+            # Flush stale buffered frames so we capture a fresh image
+            for _ in range(CAPTURE_FLUSH_READS):
+                self.cap.read()
 
             ret, frame = self.cap.read()
             if not ret or frame is None or frame.size == 0:
