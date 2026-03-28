@@ -44,6 +44,9 @@ class WebcamApp:
         self.root.configure(bg="white")
         self._center(MAIN_W, MAIN_H)
 
+        # Solution state (set after a successful scan/analyze)
+        self.solution = None
+
         # Main container: left for results, right for camera controls
         self.main_container = tk.Frame(root, bg="white")
         self.main_container.pack(fill="both", expand=True)
@@ -158,9 +161,6 @@ class WebcamApp:
 
         # helper for live face updates during scan
         self.face_image_refs = {**self.face_image_refs}
-
-        # Solution state (set after a successful scan/analyze)
-        self.solution = None
 
         # Camera state
         self.cap = None
