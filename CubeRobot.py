@@ -6,6 +6,7 @@ import tkinter as tk
 import analyzeCube.twophase.solver as tp
 from analyzeCube.cubeTracker import extract_colors_from_image
 from analyzeCube.colorresolver.solver import resolve_colors
+from analyzeCube.solver import *
 from moveCube.handles import *
 from moveCube.moves import photo
 from pathlib import Path
@@ -23,7 +24,7 @@ MARGIN = 10                          # distance from top/right edges
 # Probe camera indices 0..MAX_INDEX-1
 MAX_INDEX = 4                        # increase if you have many virtual cams
 
-# Prefer DirectShow on Windows (often avoids black frames) [2](https://centricnetherlandsiit.sharepoint.com/sites/Wiki-Exports/Shared%20Documents/Wiki-PSS-InformationFlows-2025-03-27-22-37/s4igov-07---29043-Key2BM-GBA-V-Win-service-support-Unicode-format-60721028.aspx.pdf?web=1)
+# Prefer DirectShow on Windows (often avoids black frames)
 BACKENDS = [cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_ANY]
 
 # Update interval for GUI refresh
@@ -143,11 +144,10 @@ class WebcamApp:
         self.mount_button.pack(anchor="w", padx=(0, 8), pady=2)
 
         self.scan_button = tk.Button(**button_opts, text="Scan", command=self.run_scan)
-        #self.scan_button = tk.Button(**button_opts, text="Scan", command=self.run_photo)
         self.scan_button.pack(anchor="w", padx=(0, 8), pady=2)
 
-        #self.solve_button = tk.Button(**button_opts, text="Solve", command=self.run_solve)
-        #self.solve_button.pack(anchor="w", padx=(0, 8), pady=2)
+        self.solve_button = tk.Button(**button_opts, text="Solve", command=SolveCube)
+        self.solve_button.pack(anchor="w", padx=(0, 8), pady=2)
 
         # Status line
         self.status = tk.Label(

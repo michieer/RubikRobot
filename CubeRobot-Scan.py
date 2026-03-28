@@ -9,8 +9,8 @@ from PIL import Image, ImageTk
 from moveCube.moves import photo
 from analyzeCube.cubeTracker import extract_colors_from_image
 from analyzeCube.colorresolver.solver import resolve_colors
+from analyzeCube.solver import *
 from moveCube.handles import *
-
 
 # -----------------------
 # SETTINGS (edit here)
@@ -145,8 +145,8 @@ class WebcamApp:
         self.scan_button = tk.Button(**button_opts, text="Scan", command=self.run_scan)
         self.scan_button.pack(anchor="w", padx=(0, 8), pady=2)
 
-        #self.solve_button = tk.Button(**button_opts, text="Solve", command=self.run_solve)
-        #self.solve_button.pack(anchor="w", padx=(0, 8), pady=2)
+        self.solve_button = tk.Button(**button_opts, text="Solve", command=run_solve)
+        self.solve_button.pack(anchor="w", padx=(0, 8), pady=2)
 
         # Status line
         self.status = tk.Label(
