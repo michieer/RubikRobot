@@ -146,7 +146,7 @@ class WebcamApp:
         self.scan_button = tk.Button(**button_opts, text="Scan", command=self.run_scan)
         self.scan_button.pack(anchor="w", padx=(0, 8), pady=2)
 
-        self.solve_button = tk.Button(**button_opts, text="Solve", command=SolveCube)
+        self.solve_button = tk.Button(**button_opts, text="Solve", command=self.run_solve)
         self.solve_button.pack(anchor="w", padx=(0, 8), pady=2)
 
         # Status line
@@ -158,6 +158,9 @@ class WebcamApp:
 
         # helper for live face updates during scan
         self.face_image_refs = {**self.face_image_refs}
+
+        # Solution state (set after a successful scan/analyze)
+        self.solution = None
 
         # Camera state
         self.cap = None
@@ -342,6 +345,13 @@ class WebcamApp:
         thread.daemon = True
         thread.start()
 
+    def run_solve(self):
+        if self.solution is None:
+            self.results_text.delete(1.0, tk.END)
+            self.results_text.insert(tk.END, "No solution available. Please run Scan first to analyze the cube.\n")
+            return
+        SolveCube(self.solution)
+
     def _resume_preview(self):
         """Resume the live camera preview after scanning."""
         if self.cap is not None and self.after_id is None:
@@ -493,10 +503,11 @@ class WebcamApp:
                     color = face_color_map.get(cube_face_letter, face_color_map.get(face_name, '#fff'))
                     canvas.create_rectangle(x, y, x + cell_size, y + cell_size, fill=color, outline="#000")
 
-            solution = (twoPhase.split(' '))[:-1]
+            self.solution = twoPhase
+            solution = (self.solution.split(' '))[:-1]
             steps = len(solution)
     
-            self.result_line.config(text=f"Kociemba: {kociemba_string} \nSolution: {twoPhase} \nMoves: {str(steps)}")
+            self.result_line.config(text=f"Kociemba: {kociemba_string} \nSolution: {self.solution} \nMoves: {str(steps)}")
             self.results_text.delete('1.0', tk.END)
             self.results_text.insert(tk.END, "Scan complete.\n")
 
