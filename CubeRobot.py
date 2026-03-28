@@ -46,7 +46,7 @@ class WebcamApp:
 
         # Solution state (set after a successful scan/analyze)
         self.solution = None
-        
+
         # Main container: left for results, right for camera controls
         self.main_container = tk.Frame(root, bg="white")
         self.main_container.pack(fill="both", expand=True)
@@ -149,7 +149,7 @@ class WebcamApp:
         self.scan_button = tk.Button(**button_opts, text="Scan", command=self.run_scan)
         self.scan_button.pack(anchor="w", padx=(0, 8), pady=2)
 
-        self.solve_button = tk.Button(**button_opts, text="Solve", command=SolveCube)
+        self.solve_button = tk.Button(**button_opts, text="Solve", command=self.run_solve)
         self.solve_button.pack(anchor="w", padx=(0, 8), pady=2)
 
         # Status line
@@ -504,10 +504,10 @@ class WebcamApp:
                     canvas.create_rectangle(x, y, x + cell_size, y + cell_size, fill=color, outline="#000")
 
             self.solution = twoPhase
-            solution = (twoPhase.split(' '))[:-1]
+            solution = (self.solution.split(' '))[:-1]
             steps = len(solution)
     
-            self.result_line.config(text=f"Kociemba: {kociemba_string} \nSolution: {twoPhase} \nMoves: {str(steps)}")
+            self.result_line.config(text=f"Kociemba: {kociemba_string} \nSolution: {self.solution} \nMoves: {str(steps)}")
             self.results_text.delete('1.0', tk.END)
             self.results_text.insert(tk.END, "Scan complete.\n")
 
