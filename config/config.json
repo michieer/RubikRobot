@@ -48,9 +48,5 @@
         "180":2000,
         "move":1000,
         "photo":1000
-    },
-	"serial":{
-		"nt":"COM4",
-		"posix":"/dev/ttyACM0"
-	}
+    }
 }

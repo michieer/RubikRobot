@@ -7,8 +7,6 @@ from moveCube.maestro import *
 with open('config/config.json', mode='r', encoding='utf-8') as jsonFile:
     config = json.load(jsonFile)
 
-serialDevice = config['serial'][os.name]
-
 delay90 = int(config['delay']['90']) / 1000
 delay180 = int(config['delay']['180']) / 1000
 delayMove = int(config['delay']['move']) / 1000
@@ -63,11 +61,96 @@ def photo (side: str):
             sleep(delay90)
             dualMove('uOut')
 
-def rotate (action: str, cube: str):
+def rotate (action: str):
     side = action[0].lower()
     turn = action[-1]
     
-    match cube:
+    if side == "f":
+        dSide = "r"
+    elif side == "b":
+        dSide = "l"
+    else:
+        dSide = side
+
+    match turn:
+        case '1':
+            dest = dSide + 'Right'
+            delay = delay90
+        case '2':
+            dest = dSide + '180'
+            delay = delay180
+        case '3':
+            dest = dSide + 'Left'
+            delay = delay90
+        case _:
+            raise ValueError("Invalid turn")
+    
+    print("Turning: " + action)
+    print("Side: " + side + ", Dest: " + dest)
+
+    match side:
+        case 'r':
+            singleMove(dest)
+            sleep(delay)
+            singleMove('rIn')
+            sleep(delayMove)
+            singleMove('rHome')
+            sleep(delay)
+            singleMove('rOut')
+            sleep(delayMove)
+        case 'l':
+            singleMove(dest)
+            sleep(delay)
+            singleMove('lIn')
+            sleep(delayMove)
+            singleMove('lHome')
+            sleep(delay)
+            singleMove('lOut')
+            sleep(delayMove)
+        case 'u':
+            singleMove(dest)
+            sleep(delay)
+            singleMove('uIn')
+            sleep(delayMove)
+            singleMove('uHome')
+            sleep(delay)
+            singleMove('uOut')
+            sleep(delayMove)
+        case 'd':
+            singleMove(config['down']['out'] + 100)
+            sleep(0.2)
+            singleMove(dest)
+            sleep(delay)
+            singleMove('dIn')
+            sleep(delayMove)
+            singleMove('dHome')
+            sleep(delay)
+            singleMove('dOut')
+            sleep(delayMove)
+        case 'f':
+            singleMove(dest)
+            sleep(delay)
+            singleMove('rIn')
+            sleep(delayMove)
+            singleMove('rHome')
+            sleep(delay)
+            singleMove('rOut')
+            sleep(delayMove)
+        case 'b':
+            singleMove(dest)
+            sleep(delay)
+            singleMove('lIn')
+            sleep(delayMove)
+            singleMove('lHome')
+            sleep(delay)
+            singleMove('lOut')
+            sleep(delayMove)
+
+def twist(action: str):
+    print("Turning " + action + " to right")
+    #self.results_text.insert(tk.END, "Turning " + action + " to right.\n")
+
+    match action:
         case 'front':
             dualMove('rIn')
             sleep(delay90)
@@ -94,83 +177,3 @@ def rotate (action: str, cube: str):
             sleep(delay90)
             dualMove('uOut')
             sleep(delay90)
-        case _:
-            raise ValueError("Invalid side")
-    
-    if side == "f":
-        dSide = "r"
-    elif side == "b":
-        dSide = "l"
-    else:
-        dSide = side
-
-    match turn:
-        case '1':
-            dest = dSide + 'Right'
-            delay = delay90
-        case '2':
-            dest = dSide + '180'
-            delay = delay180
-        case '3':
-            dest = dSide + 'Left'
-            delay = delay90
-        case _:
-            raise ValueError("Invalid turn")
-
-    match side:
-        case 'R':
-            singleMove(dest)
-            sleep(delay)
-            singleMove('rIn')
-            sleep(delayMove)
-            singleMove('rHome')
-            sleep(delay)
-            singleMove('rOut')
-            sleep(delayMove)
-        case 'L':
-            singleMove(dest)
-            sleep(delay)
-            singleMove('lIn')
-            sleep(delayMove)
-            singleMove('lHome')
-            sleep(delay)
-            singleMove('lOut')
-            sleep(delayMove)
-        case 'U':
-            singleMove(dest)
-            sleep(delay)
-            singleMove('uIn')
-            sleep(delayMove)
-            singleMove('uHome')
-            sleep(delay)
-            singleMove('uOut')
-            sleep(delayMove)
-        case 'D':
-            singleMove(('dOut') + 100)
-            sleep(0.2)
-            singleMove(dest)
-            sleep(delay)
-            singleMove('dIn')
-            sleep(delayMove)
-            singleMove('dHome')
-            sleep(delay)
-            singleMove('dOut')
-            sleep(delayMove)
-        case 'F':
-            singleMove(dest)
-            sleep(delay)
-            singleMove('rIn')
-            sleep(delayMove)
-            singleMove('rHome')
-            sleep(delay)
-            singleMove('rOut')
-            sleep(delayMove)
-        case 'B':
-            singleMove(dest)
-            sleep(delay)
-            singleMove('lIn')
-            sleep(delayMove)
-            singleMove('lHome')
-            sleep(delay)
-            singleMove('lOut')
-            sleep(delayMove)

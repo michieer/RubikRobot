@@ -149,7 +149,7 @@ class WebcamApp:
         self.scan_button = tk.Button(**button_opts, text="Scan", command=self.run_scan)
         self.scan_button.pack(anchor="w", padx=(0, 8), pady=2)
 
-        self.solve_button = tk.Button(**button_opts, text="Solve", command=SolveCube)
+        self.solve_button = tk.Button(**button_opts, text="Solve", command=self.run_solve)
         self.solve_button.pack(anchor="w", padx=(0, 8), pady=2)
 
         # Status line
@@ -419,7 +419,7 @@ class WebcamApp:
             self._resume_preview_async()
 
             self.root.after(0, lambda s=side_name, p=str(croppedfile): self._update_face_thumbnail(s, p))
-            self.root.after(0, lambda s=side_name: self.status.config(text=f"Captured {s}"))
+            self.root.after(0, lambda s=side_name: self.result_line.config(text=f"Captured {s}"))
 
         # load the six faces from captured photos
         list_colors = []

@@ -1,14 +1,20 @@
 import os
-import sys
 import json
 import serial
-from subprocess import Popen
 import moveCube.servo as servo
+import serial.tools.list_ports
 
 with open('config/config.json', mode='r', encoding='utf-8') as jsonFile:
     config = json.load(jsonFile)
 
-serialDevice = config['serial'][os.name]
+# Assign serial portname
+match os.name:
+    case 'nt':
+        for port in serial.tools.list_ports.comports():
+            if "Pololu" in port.description and "Command" in port.description:
+                serialDevice = port.device
+    case 'posix':
+        serialDevice = '/dev/ttyACM0'
 
 rTurn = config['right']['turnId']
 rHome = config['right']['90']

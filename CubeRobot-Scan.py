@@ -9,6 +9,7 @@ from PIL import Image, ImageTk
 from moveCube.moves import photo
 from analyzeCube.cubeTracker import extract_colors_from_image
 from analyzeCube.colorresolver.solver import resolve_colors
+#from analyzeCube.solverSim import *
 from analyzeCube.solver import *
 from moveCube.handles import *
 
@@ -115,20 +116,6 @@ class WebcamApp:
 
         # Container on the right for camera and controls
         self.overlay = self.right_frame
-
-        # Preview
-        self.preview = tk.Label(self.overlay, bg="white", bd=1, relief="solid")
-        self.preview.pack(padx=10, pady=10)
-
-        # Radio buttons below preview
-        self.rb_frame = tk.Frame(self.overlay, bg="white")
-        self.rb_frame.pack(fill="x", pady=(8, 0))
-
-        self.title_lbl = tk.Label(
-            self.rb_frame, text="Camera:", bg="white", fg="black",
-            font=("Segoe UI", 10, "bold")
-        )
-        self.title_lbl.pack(anchor="w")
 
         # Buttons below radio buttons
         self.button_frame = tk.Frame(self.overlay, bg="white")
