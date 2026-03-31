@@ -79,6 +79,8 @@ def singleMove (action: str):
             if ((move == 'In') or (move == 'Out')):
                 port = 11
             else:
+                # Move dOut 100 to get some extra space
+                servo.moveServo('single', serialDevice, 11, dOut + 100)
                 port = 3
         case _:
             raise ValueError("Invalid side")
@@ -87,6 +89,7 @@ def singleMove (action: str):
     action1 = globals()[action]
     servo.moveServo('single', serialDevice, port, action1)
 servo.moveServo
+
 def dualMove (action: str):
     side = action[0].lower()
     move = action[1:]

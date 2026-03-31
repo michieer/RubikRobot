@@ -117,8 +117,6 @@ def rotate (action: str):
             singleMove('uOut')
             sleep(delayMove)
         case 'd':
-            singleMove(config['down']['out'] + 100)
-            sleep(0.2)
             singleMove(dest)
             sleep(delay)
             singleMove('dIn')

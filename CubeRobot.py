@@ -1,3 +1,5 @@
+from tkinter import ttk
+
 import cv2
 import json
 import threading
@@ -11,6 +13,7 @@ from moveCube.handles import *
 from moveCube.moves import photo
 from pathlib import Path
 from PIL import Image, ImageTk
+from calibration_gui import open_calibration_window
 
 # -----------------------
 # SETTINGS (edit here)
@@ -152,12 +155,20 @@ class WebcamApp:
         self.solve_button = tk.Button(**button_opts, text="Solve", command=self.run_solve)
         self.solve_button.pack(anchor="w", padx=(0, 8), pady=2)
 
+        self.calibrate_button = tk.Button(**button_opts, text="Calibrate", command=lambda: open_calibration_window(self.root))
+        self.calibrate_button.pack(anchor="w", padx=(0, 8), pady=2)
+
         # Status line
         self.status = tk.Label(
             self.overlay, text="", bg="white", fg="black",
             font=("Consolas", 9), justify="left"
         )
         self.status.pack(fill="x", pady=(6, 0))
+
+        # Close button at bottom right
+        close_button_frame = tk.Frame(self.overlay, bg="white")
+        close_button_frame.pack(side="bottom", fill="x", padx=20, pady=20)
+        tk.Button(close_button_frame, text="Close", command=self.root.quit).pack(side="right", padx=5)
 
         # helper for live face updates during scan
         self.face_image_refs = {**self.face_image_refs}
@@ -185,7 +196,7 @@ class WebcamApp:
             self.schedule_next()
 
         # Clean close handling (prevents your after() error) [1](https://learn.microsoft.com/en-us/training/modules/configure-user-experience-settings/?WT.mc_id=api_CatalogApi&sso=viva-learning)
-        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        #self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def _center(self, w, h):
         self.root.update_idletasks()
@@ -334,7 +345,7 @@ class WebcamApp:
 
     def run_scan(self):
         self.results_text.delete(1.0, tk.END)
-        self.results_text.insert(tk.END, "Scanning... this may take 10-20s while twophase tables load\n")
+        self.results_text.insert(tk.END, "Scanning cube...\n")
 
         # Pause the live preview so the scan thread can reuse self.cap
         if self.after_id is not None:
