@@ -195,8 +195,8 @@ class WebcamApp:
             self.open_camera(self.cam_index.get())
             self.schedule_next()
 
-        # Clean close handling (prevents your after() error) [1](https://learn.microsoft.com/en-us/training/modules/configure-user-experience-settings/?WT.mc_id=api_CatalogApi&sso=viva-learning)
-        #self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        # Clean close handling (prevents your after() error)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def _center(self, w, h):
         self.root.update_idletasks()
@@ -329,7 +329,6 @@ class WebcamApp:
         self.preview.config(image=imgtk)
 
     def on_close(self):
-        # Cancel scheduled after job to avoid "invalid command name ... (after script)" [1](https://learn.microsoft.com/en-us/training/modules/configure-user-experience-settings/?WT.mc_id=api_CatalogApi&sso=viva-learning)
         try:
             if self.after_id is not None:
                 self.root.after_cancel(self.after_id)

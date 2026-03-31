@@ -75,7 +75,7 @@ class AdjustServoFrame:
             slider_frame,
             from_=self.min_value,
             to=self.max_value,
-            increment=1,
+            increment=10,
             textvariable=self.value_var,
             font=("Segoe UI", 12),
             width=6
@@ -123,7 +123,7 @@ class AdjustServoFrame:
     
     def save_value(self):
         #Save new servo position to config#
-        new_value = int(float(self.slider.get()))
+        new_value = int(float(self.value_var.get()))
         self.config[self.direction][str(self.position)] = new_value
         
         # Save to JSON file
