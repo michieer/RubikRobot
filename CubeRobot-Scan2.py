@@ -217,28 +217,7 @@ class WebcamApp:
         kociemba_string = resolved_data['kociemba']
         twoPhase = tp.solve(kociemba_string, 10, 2)
 
-        # load and display image thumbnails
-        top_images = {}
-        for side in ("U", "L", "F", "R", "B", "D"):
-            image_path = tmp_dir / f"rubiks-{side}.png"
-            # Pillow 10+ uses Resampling enum; Image.ANTIALIAS is removed
-            resample_method = getattr(Image, 'Resampling', None)
-            if resample_method is not None:
-                resample = Image.Resampling.LANCZOS
-            else:
-                resample = Image.LANCZOS
-
-            im = Image.open(image_path).resize((THUMBNAIL_SIZE, THUMBNAIL_SIZE), resample=resample)
-            top_images[side] = ImageTk.PhotoImage(im)
-
         def update_ui():
-            for side, photo in top_images.items():
-                canvas = self.face_canvases.get(side)
-                if canvas is not None:
-                    canvas.delete("all")
-                    canvas.create_image(THUMBNAIL_SIZE // 2, THUMBNAIL_SIZE // 2, image=photo)
-                    self.face_image_refs[side] = photo
-
             # Render colorresolver cube output with exact sticker colors
             face_color_map = {}
             for side_name, side_value in resolved_data.get('sides', {}).items():
@@ -246,7 +225,7 @@ class WebcamApp:
                     c = side_value['colorHTML']
                     face_color_map[side_name] = f"#{int(c['red']):02x}{int(c['green']):02x}{int(c['blue']):02x}"
 
-                # Layout from kociemba: URFDLB -> faces U, R, F, D, L, B
+            # Layout from kociemba: URFDLB -> faces U, R, F, D, L, B
             kociemba = kociemba_string.strip()
             face_order = ['U', 'R', 'F', 'D', 'L', 'B']
             face_squares = {}

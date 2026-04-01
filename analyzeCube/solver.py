@@ -1,7 +1,8 @@
 from moveCube.moves import rotate, twist
 from moveCube.handles import park
+from moveCube.logger import *
 
-def SolveCube (solution: str):
+def SolveCube (self, solution: str):
     list = (solution.split(' '))[:-1]
     steps = len(list)
     
@@ -12,12 +13,14 @@ def SolveCube (solution: str):
         move = list[i]
         side = move[0].upper()
         
-        print("Move " + str(i + 1))
+        log("Move " + str(i + 1) + " " + move)
         
         if ((front == "front") and ((side == "F") or (side == "B"))):
+            log("Turning front - right")
             front = "right"
             twist("right")
         elif ((front == "right") and ((side == "R") or (side == "L"))):
+            log("Turning front - front")
             front = "front"
             twist("front")
 

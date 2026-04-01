@@ -3,14 +3,14 @@ from tkinter import ttk
 import cv2
 import json
 import threading
-import time
 import tkinter as tk
 import analyzeCube.twophase.solver as tp
 from analyzeCube.cubeTracker import extract_colors_from_image
 from analyzeCube.colorresolver.solver import resolve_colors
 from analyzeCube.solver import *
+from analyzeCube.photos import *
 from moveCube.handles import *
-from moveCube.moves import photo
+from moveCube.logger import *
 from pathlib import Path
 from PIL import Image, ImageTk
 from calibration_gui import open_calibration_window
@@ -39,6 +39,8 @@ BLACK_MEAN_THRESHOLD = 1.0           # below this = treat as "black frame"
 CAPTURE_FLUSH_READS = 5              # frames to discard before capture (flush stale buffer)
 # -----------------------
 
+tmp_dir = Path('tmp')
+tmp_dir.mkdir(parents=True, exist_ok=True)
 
 class WebcamApp:
     def __init__(self, root):
@@ -113,9 +115,33 @@ class WebcamApp:
         self.result_line = tk.Label(self.left_frame, text="Kociemba + solution will appear here", bg="white", justify="left", anchor="w", font=("Segoe UI", 10, "bold"))
         self.result_line.pack(fill="x", padx=10, pady=(0, 5))
 
-        self.results_text = tk.Text(self.left_frame, wrap="word", font=("Consolas", 10), bg="white")
-        self.results_text.pack(fill="both", expand=True, padx=10, pady=(0,10))
-        self.results_text.insert(tk.END, "Press 'Scan' to run cube detection and solve.\n")
+        # Frame specifically for text + scrollbar
+        text_frame = tk.Frame(self.left_frame)
+        text_frame.pack(fill="both", expand=True, padx=10, pady=(0,10))
+
+        # Text widget
+        self.results_text = tk.Text(
+            text_frame,
+            wrap="word",
+            font=("Consolas", 10),
+            bg="white",
+            highlightthickness=0
+        )
+        self.results_text.pack(side="left", fill="both", expand=True)
+
+        # Scrollbar
+        self.scrollbar = tk.Scrollbar(text_frame, command=self.results_text.yview)
+        self.scrollbar.pack(side="right", fill="y")
+
+        self.results_text.config(yscrollcommand=self.scrollbar.set)
+
+        init_logger(self.root, self.results_text)
+
+        scrollbar = tk.Scrollbar(self.left_frame, command=self.results_text.yview)
+        self.results_text.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+
+        log("Press 'Take Photo' to run cube detection and solve.\n")
 
         # Container on the right for camera and controls
         self.overlay = self.right_frame
@@ -149,14 +175,20 @@ class WebcamApp:
         self.mount_button = tk.Button(**button_opts, text="Mount", command=mount)
         self.mount_button.pack(anchor="w", padx=(0, 8), pady=2)
 
-        self.scan_button = tk.Button(**button_opts, text="Scan", command=self.run_scan)
+        self.scan_button = tk.Button(**button_opts, text="Take Photos", command=self.run_take_photos)
+        self.scan_button.pack(anchor="w", padx=(0, 8), pady=(20,2))
+
+        self.scan_button = tk.Button(**button_opts, text="Read Photos", command=self.run_scan_photos)
         self.scan_button.pack(anchor="w", padx=(0, 8), pady=2)
 
         self.solve_button = tk.Button(**button_opts, text="Solve", command=self.run_solve)
         self.solve_button.pack(anchor="w", padx=(0, 8), pady=2)
 
         self.calibrate_button = tk.Button(**button_opts, text="Calibrate", command=lambda: open_calibration_window(self.root))
-        self.calibrate_button.pack(anchor="w", padx=(0, 8), pady=2)
+        self.calibrate_button.pack(anchor="w", padx=(0, 8), pady=(20,2))
+
+        self.close_button = tk.Button(**button_opts, text="Close", command=self.root.quit)
+        self.close_button.pack(anchor="w", padx=(0, 8), pady=(20,2))
 
         # Status line
         self.status = tk.Label(
@@ -164,11 +196,6 @@ class WebcamApp:
             font=("Consolas", 9), justify="left"
         )
         self.status.pack(fill="x", pady=(6, 0))
-
-        # Close button at bottom right
-        close_button_frame = tk.Frame(self.overlay, bg="white")
-        close_button_frame.pack(side="bottom", fill="x", padx=20, pady=20)
-        tk.Button(close_button_frame, text="Close", command=self.root.quit).pack(side="right", padx=5)
 
         # helper for live face updates during scan
         self.face_image_refs = {**self.face_image_refs}
@@ -197,6 +224,12 @@ class WebcamApp:
 
         # Clean close handling (prevents your after() error)
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def log(self, message):
+        def append_text():
+            self.results_text.insert("end", message + "\n")
+            self.results_text.see("end")
+        self.root.after(0, append_text)
 
     def _center(self, w, h):
         self.root.update_idletasks()
@@ -342,16 +375,24 @@ class WebcamApp:
         finally:
             self.root.destroy()
 
-    def run_scan(self):
+    def run_take_photos(self):
         self.results_text.delete(1.0, tk.END)
         self.results_text.insert(tk.END, "Scanning cube...\n")
-
+        
         # Pause the live preview so the scan thread can reuse self.cap
         if self.after_id is not None:
             self.root.after_cancel(self.after_id)
             self.after_id = None
 
-        thread = threading.Thread(target=self.run_photo_thread)
+        thread = threading.Thread(target=self.run_photo_thread, args=(tmp_dir, "take_photos"))
+        thread.daemon = True
+        thread.start()
+
+    def run_scan_photos(self):
+        self.results_text.delete(1.0, tk.END)
+        self.results_text.insert(tk.END, "Scanning photos...\n")
+
+        thread = threading.Thread(target=self.run_photo_thread, args=(tmp_dir, "read_photos"))
         thread.daemon = True
         thread.start()
 
@@ -360,128 +401,44 @@ class WebcamApp:
             self.results_text.delete(1.0, tk.END)
             self.results_text.insert(tk.END, "No solution available. Please run Scan first to analyze the cube.\n")
             return
-        SolveCube(self.solution)
+
+        thread = threading.Thread(target=SolveCube, args=(self, self.solution))
+        thread.daemon = True
+        thread.start()
 
     def _resume_preview(self):
-        """Resume the live camera preview after scanning."""
+        #Resume the live camera preview after scanning.
         if self.cap is not None and self.after_id is None:
             self.schedule_next()
 
     def _pause_preview_sync(self):
-        """Call from background thread to pause preview and wait until stopped."""
+        #Call from background thread to pause preview and wait until stopped.
         self._preview_stopped.clear()
         self.root.after(0, self._do_pause_preview)
         self._preview_stopped.wait(timeout=2.0)
 
     def _do_pause_preview(self):
-        """Runs on main thread. Cancels the preview loop and signals the event."""
+        #Runs on main thread. Cancels the preview loop and signals the event.
         if self.after_id is not None:
             self.root.after_cancel(self.after_id)
             self.after_id = None
         self._preview_stopped.set()
 
     def _resume_preview_async(self):
-        """Call from background thread to resume preview on main thread."""
+        #Call from background thread to resume preview on main thread.
         self.root.after(0, self._resume_preview)
 
-    def run_photo_thread(self):
-        tmp_dir = Path('tmp')
-        tmp_dir.mkdir(parents=True, exist_ok=True)
+    def run_photo_thread(self, folder: str, action: str):
+        get_photos(self, folder, action)
 
-        # Reuse the already-open preview camera (self.cap)
-        if self.cap is None or not self.cap.isOpened():
-            self.root.after(0, lambda: self.results_text.insert(tk.END, "Camera is not available\n"))
-            self.root.after(0, self._resume_preview)
-            return
-
-        # warm up camera auto-exposure/white balance before first useful frame
-        for _ in range(6):
-            self.cap.read()
-            time.sleep(0.1)
-
-        # Resume preview so user can see robot movements
-        self._resume_preview_async()
-
-        # capture cube faces in scanning order
-        for side_name in ("F", "R", "B", "L", "U", "D"):
-            croppedfile = tmp_dir / f"rubiks-{side_name}.png"
-
-            photo(side_name)
-            time.sleep(2)
-
-            # Pause preview to get exclusive camera access for capture
-            self._pause_preview_sync()
-
-            # Flush stale buffered frames so we capture a fresh image
-            for _ in range(CAPTURE_FLUSH_READS):
-                self.cap.read()
-
-            ret, frame = self.cap.read()
-            if not ret or frame is None or frame.size == 0:
-                self.root.after(0, lambda: self.results_text.insert(tk.END, f"Camera read failed for {side_name}\n"))
-                self.root.after(0, self._resume_preview)
-                return
-
-            cropped = frame[10:390, 140:520]
-            cv2.imwrite(str(croppedfile), cropped)
-
-            # Resume preview after capture
-            self._resume_preview_async()
-
-            self.root.after(0, lambda s=side_name, p=str(croppedfile): self._update_face_thumbnail(s, p))
-            self.root.after(0, lambda s=side_name: self.result_line.config(text=f"Captured {s}"))
-
-        # load the six faces from captured photos
-        list_colors = []
-        for side_name in ("U", "L", "F", "R", "B", "D", "finish"):
-            if side_name != "finish":
-                image_path = tmp_dir / f"rubiks-{side_name}.png"
-                if not image_path.exists():
-                    self.root.after(0, lambda: self.results_text.insert(tk.END, f"Missing image {image_path}\n"))
-                    return
-
-                colors = extract_colors_from_image(str(image_path))
-                list_colors.append(colors)
-            else:
-                photo(side_name)
-                break
-
-        data = {}
-        square_index = 1
-        for face in list_colors:
-            for rgb in face:
-                data[square_index] = rgb
-                square_index += 1
-
-        json_str = json.dumps(data, sort_keys=True)
+        json_str = analyze_photos(self, tmp_dir)
         resolved_json_str = resolve_colors(rgb=json_str, use_json=True)
         resolved_data = json.loads(resolved_json_str)
 
         kociemba_string = resolved_data['kociemba']
-        twoPhase = tp.solve(kociemba_string, 10, 2)
-
-        # load and display image thumbnails
-        top_images = {}
-        for side in ("U", "L", "F", "R", "B", "D"):
-            image_path = tmp_dir / f"rubiks-{side}.png"
-            # Pillow 10+ uses Resampling enum; Image.ANTIALIAS is removed
-            resample_method = getattr(Image, 'Resampling', None)
-            if resample_method is not None:
-                resample = Image.Resampling.LANCZOS
-            else:
-                resample = Image.LANCZOS
-
-            im = Image.open(image_path).resize((THUMBNAIL_SIZE, THUMBNAIL_SIZE), resample=resample)
-            top_images[side] = ImageTk.PhotoImage(im)
+        twoPhase = tp.solve(kociemba_string, 5, 5)
 
         def update_ui():
-            for side, photo in top_images.items():
-                canvas = self.face_canvases.get(side)
-                if canvas is not None:
-                    canvas.delete("all")
-                    canvas.create_image(THUMBNAIL_SIZE // 2, THUMBNAIL_SIZE // 2, image=photo)
-                    self.face_image_refs[side] = photo
-
             # Render colorresolver cube output with exact sticker colors
             face_color_map = {}
             for side_name, side_value in resolved_data.get('sides', {}).items():
@@ -518,8 +475,8 @@ class WebcamApp:
             steps = len(solution)
     
             self.result_line.config(text=f"Kociemba: {kociemba_string} \nSolution: {twoPhase} \nMoves: {str(steps)}")
-            self.results_text.delete('1.0', tk.END)
-            self.results_text.insert(tk.END, "Scan complete.\n")
+            
+            log("Scan complete.")
 
         def resume_after_ui():
             update_ui()
