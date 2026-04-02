@@ -13,7 +13,7 @@ from moveCube.handles import *
 from moveCube.moves import photo
 from pathlib import Path
 from PIL import Image, ImageTk
-from calibration_gui import open_calibration_window
+from moveCube.calibration import open_calibration_window
 
 # -----------------------
 # SETTINGS (edit here)
@@ -67,7 +67,7 @@ class WebcamApp:
         self.face_canvases = {}
         self.face_image_refs = {}
 
-        net_positions = {
+        self.net_positions = {
             "U": (0, 1),
             "L": (1, 0),
             "F": (1, 1),
@@ -76,7 +76,7 @@ class WebcamApp:
             "D": (2, 1),
         }
 
-        for side, (r, c) in net_positions.items():
+        for side, (r, c) in self.net_positions.items():
             frame = tk.Frame(self.cube_images_frame, bg="white", bd=1, relief="solid")
             frame.grid(row=r, column=c, padx=1, pady=1)
             canvas = tk.Canvas(frame, width=THUMBNAIL_SIZE, height=THUMBNAIL_SIZE, bg="white", bd=0, highlightthickness=0)
@@ -86,7 +86,7 @@ class WebcamApp:
         # Add spacing cells so grid remains aligned
         for row in range(3):
             for col in range(4):
-                if (row, col) not in net_positions.values():
+                if (row, col) not in self.net_positions.values():
                     spacer = tk.Label(self.cube_images_frame, text="", bg="white", width=2, height=2, bd=0)
                     spacer.grid(row=row, column=col, padx=1, pady=1)
 
@@ -95,7 +95,7 @@ class WebcamApp:
         self.color_grid_frame.pack(anchor="n", pady=5)
 
         self.color_face_canvases = {}
-        for side, (r, c) in net_positions.items():
+        for side, (r, c) in self.net_positions.items():
             frame = tk.Frame(self.color_grid_frame, bg="white", bd=1, relief="solid")
             frame.grid(row=r, column=c, padx=1, pady=1)
             canvas = tk.Canvas(frame, width=THUMBNAIL_SIZE, height=THUMBNAIL_SIZE, bg="white", bd=0, highlightthickness=0)
@@ -105,7 +105,7 @@ class WebcamApp:
         # Add spacing cells for the color grid too
         for row in range(3):
             for col in range(4):
-                if (row, col) not in net_positions.values():
+                if (row, col) not in self.net_positions.values():
                     spacer = tk.Label(self.color_grid_frame, text="", bg="white", width=1, height=1, bd=0)
                     spacer.grid(row=row, column=col, padx=1, pady=1)
 
@@ -177,7 +177,6 @@ class WebcamApp:
         self.cap = None
         self.backend_used = None
         self.after_id = None
-        self.imgtk_ref = None
         self._preview_stopped = threading.Event()
 
         # Discover available cameras and build radios
@@ -292,7 +291,6 @@ class WebcamApp:
 
         # Clear image on switch
         self.preview.config(image="")
-        self.imgtk_ref = None
 
     def on_camera_change(self):
         self.open_camera(self.cam_index.get())
@@ -324,9 +322,8 @@ class WebcamApp:
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = cv2.resize(frame, (PREVIEW_W, PREVIEW_H), interpolation=cv2.INTER_AREA)
 
-        imgtk = ImageTk.PhotoImage(Image.fromarray(frame))
-        self.imgtk_ref = imgtk  # keep reference!
-        self.preview.config(image=imgtk)
+        self.imgtk = ImageTk.PhotoImage(Image.fromarray(frame))
+        self.preview.config(image=self.imgtk)
 
     def on_close(self):
         # Cancel scheduled after job to avoid "invalid command name ... (after script)" [1](https://learn.microsoft.com/en-us/training/modules/configure-user-experience-settings/?WT.mc_id=api_CatalogApi&sso=viva-learning)

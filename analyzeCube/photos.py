@@ -1,12 +1,18 @@
 import cv2
 import time
 import json
-import tkinter as tk
-from tkinter import ttk
 from moveCube.moves import photo
 from analyzeCube.cubeTracker import extract_colors_from_image
 from analyzeCube.colorresolver.solver import resolve_colors
 from moveCube.logger import *
+from PIL import Image, ImageTk
+
+THUMBNAIL_SIZE = 70                  # face photo thumbnails in the net view
+CAPTURE_FLUSH_READS = 5              # frames to discard before capture (flush stale buffer)
+
+def update_thumbnail(image_path:str, side:str):
+    im = Image.open(image_path).resize((THUMBNAIL_SIZE, THUMBNAIL_SIZE), resample=resample)
+    top_images[side] = ImageTk.PhotoImage(im)
 
 def get_photos(self, folder: str, action: str):
     match action:
@@ -28,32 +34,38 @@ def get_photos(self, folder: str, action: str):
             self._resume_preview_async()
 
             # capture cube faces in scanning order
-            for side_name in ("F", "R", "B", "L", "U", "D"):
-                croppedfile = folder / f"rubiks-{side_name}.png"
+            for side_name in ("F", "R", "B", "L", "U", "D", "finish"):
+                if side_name != "finish":
+                    croppedfile = folder / f"rubiks-{side_name}.png"
 
-                photo(side_name)
-                time.sleep(2)
+                    photo(side_name)
+                    time.sleep(2)
 
-                # Pause preview to get exclusive camera access for capture
-                self._pause_preview_sync()
+                    # Pause preview to get exclusive camera access for capture
+                    self._pause_preview_sync()
 
-                # Flush stale buffered frames so we capture a fresh image
-                for _ in range(CAPTURE_FLUSH_READS):
-                    self.cap.read()
+                    # Flush stale buffered frames so we capture a fresh image
+                    for _ in range(CAPTURE_FLUSH_READS):
+                        self.cap.read()
 
-                ret, frame = self.cap.read()
-                if not ret or frame is None or frame.size == 0:
-                    log("Camera read failed for {side_name}")
-                    self.root.after(0, self._resume_preview)
-                    return
+                    ret, frame = self.cap.read()
+                    if not ret or frame is None or frame.size == 0:
+                        log(f"Camera read failed for {side_name}")
+                        self.root.after(0, self._resume_preview)
+                        return
 
-                cropped = frame[10:390, 140:520]
-                cv2.imwrite(str(croppedfile), cropped)
+                    cropped = frame[10:390, 140:520]
+                    cv2.imwrite(str(croppedfile), cropped)
 
-                log("Captured {s}")
+                    self.root.after(0, self._update_face_thumbnail, side_name, croppedfile)
 
-                # Resume preview after capture
-                self._resume_preview_async()
+                    log(f"Captured {side_name}")
+
+                    # Resume preview after capture
+                    self._resume_preview_async()
+                else:
+                    photo(side_name)
+                    break
 
         case "read_photos":
             log("Loading pictures from files.")

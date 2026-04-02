@@ -1,5 +1,3 @@
-from tkinter import ttk
-
 import cv2
 import json
 import threading
@@ -9,11 +7,12 @@ from analyzeCube.cubeTracker import extract_colors_from_image
 from analyzeCube.colorresolver.solver import resolve_colors
 from analyzeCube.solver import *
 from analyzeCube.photos import *
+from moveCube.calibration import open_calibration_window
 from moveCube.handles import *
 from moveCube.logger import *
 from pathlib import Path
 from PIL import Image, ImageTk
-from calibration_gui import open_calibration_window
+from tkinter import ttk
 
 # -----------------------
 # SETTINGS (edit here)
@@ -36,7 +35,6 @@ UPDATE_MS = 15
 # Probe settings
 PROBE_READS = 3                      # read a few frames (some cams return 1st frame black)
 BLACK_MEAN_THRESHOLD = 1.0           # below this = treat as "black frame"
-CAPTURE_FLUSH_READS = 5              # frames to discard before capture (flush stale buffer)
 # -----------------------
 
 tmp_dir = Path('tmp')
@@ -204,12 +202,11 @@ class WebcamApp:
         self.cap = None
         self.backend_used = None
         self.after_id = None
-        self.imgtk_ref = None
         self._preview_stopped = threading.Event()
 
         # Discover available cameras and build radios
         self.available = self.find_available_cameras(MAX_INDEX)
-        self.cam_index = tk.IntVar(value=self.available[0] if self.available else 0)
+        self.cam_index = tk.IntVar(value=max(self.available) if self.available else 0)
 
         if not self.available:
             self.status.config(
@@ -325,7 +322,6 @@ class WebcamApp:
 
         # Clear image on switch
         self.preview.config(image="")
-        self.imgtk_ref = None
 
     def on_camera_change(self):
         self.open_camera(self.cam_index.get())
@@ -349,7 +345,7 @@ class WebcamApp:
         if frame.mean() < BLACK_MEAN_THRESHOLD:
             self.status.config(
                 text=(f"Black frame from camera {self.cam_index.get()} (backend={self.backend_used}).\n"
-                      f"Try another camera."),
+                        f"Try another camera."),
                 fg="red"
             )
             return
@@ -357,9 +353,8 @@ class WebcamApp:
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = cv2.resize(frame, (PREVIEW_W, PREVIEW_H), interpolation=cv2.INTER_AREA)
 
-        imgtk = ImageTk.PhotoImage(Image.fromarray(frame))
-        self.imgtk_ref = imgtk  # keep reference!
-        self.preview.config(image=imgtk)
+        self.imgtk = ImageTk.PhotoImage(Image.fromarray(frame))
+        self.preview.config(image=self.imgtk)
 
     def on_close(self):
         try:
@@ -446,7 +441,7 @@ class WebcamApp:
                     c = side_value['colorHTML']
                     face_color_map[side_name] = f"#{int(c['red']):02x}{int(c['green']):02x}{int(c['blue']):02x}"
 
-                # Layout from kociemba: URFDLB -> faces U, R, F, D, L, B
+            # Layout from kociemba: URFDLB -> faces U, R, F, D, L, B
             kociemba = kociemba_string.strip()
             face_order = ['U', 'R', 'F', 'D', 'L', 'B']
             face_squares = {}
