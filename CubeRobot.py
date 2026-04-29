@@ -3,6 +3,7 @@ import json
 import threading
 import tkinter as tk
 import analyzeCube.twophase.solver as tp
+import analyzeCube.twophase.performance as pf
 from analyzeCube.cubeTracker import extract_colors_from_image
 from analyzeCube.colorresolver.solver import resolve_colors
 from analyzeCube.solver import *
@@ -109,9 +110,32 @@ class WebcamApp:
                     spacer = tk.Label(self.color_grid_frame, text="", bg="white", width=1, height=1, bd=0)
                     spacer.grid(row=row, column=col, padx=1, pady=1)
 
-        # Bottom: Kociemba + solution lines (no HTML text window)
-        self.result_line = tk.Label(self.left_frame, text="Kociemba + solution will appear here", bg="white", justify="left", anchor="w", font=("Segoe UI", 10, "bold"))
-        self.result_line.pack(fill="x", padx=10, pady=(0, 5))
+        form_frame = tk.Frame(self.left_frame, bg="white")
+        form_frame.pack(fill="x", padx=10, pady=5)
+
+        # Cube row
+        tk.Label(form_frame, text="Cube:", bg="white").grid(row=0, column=0, sticky="w", padx=5, pady=5)
+
+        self.cube_line = tk.Entry(form_frame, bg="white", font=("Segoe UI", 10, "bold"), relief="solid")
+        self.cube_line.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
+
+        # Random cube row
+        self.random_button = tk.Button(form_frame, text="Random Cube", command=self.run_get_cube_string)
+        self.random_button.grid(row=1, column=0, sticky="w", padx=5, pady=5)
+
+        self.newCube_line = tk.Entry(form_frame, bg="white", font=("Segoe UI", 10, "bold"), relief="solid")
+        self.newCube_line.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
+
+        # Solution row
+        tk.Label(form_frame, text="Solution:", bg="white").grid(row=2, column=0, sticky="w", padx=5, pady=5)
+        self.result_line = tk.Entry(form_frame,bg="white",font=("Segoe UI", 10, "bold"),relief="flat")
+        self.result_line.insert(0, "Solution will appear here")
+        self.result_line.config(state="readonly")
+        self.result_line.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
+
+        # Make entry column stretch
+        form_frame.columnconfigure(1, weight=1)        # Make the right column expand
+        self.left_frame.columnconfigure(1, weight=1)
 
         # Frame specifically for text + scrollbar
         text_frame = tk.Frame(self.left_frame)
@@ -391,7 +415,26 @@ class WebcamApp:
         thread.daemon = True
         thread.start()
 
+    def run_get_cube_string(self):
+        s=pf.getCubeString()
+        self.newCube_line.delete(0, tk.END)
+        self.newCube_line.insert(0, s)
+
     def run_solve(self):
+        if self.newCube_line.get().strip() == "":
+            twoPhase = tp.solve(self.Cube_line.get().strip(), 5, 5)
+        else:
+            twoPhase = tp.solveto(self.newCube_line.get().strip(), self.cube_line.get().strip(), 20, 0.1)
+        
+        self.solution = twoPhase
+        solution = (twoPhase.split(' '))[:-1]
+        steps = len(solution)
+
+        self.result_line.config(state="normal")
+        self.result_line.delete(0, tk.END)
+        self.result_line.insert(0, f"{twoPhase} ({steps} steps)")
+        self.result_line.config(state="readonly")
+
         if self.solution is None:
             self.results_text.delete(1.0, tk.END)
             self.results_text.insert(tk.END, "No solution available. Please run Scan first to analyze the cube.\n")
@@ -430,8 +473,7 @@ class WebcamApp:
         resolved_json_str = resolve_colors(rgb=json_str, use_json=True)
         resolved_data = json.loads(resolved_json_str)
 
-        kociemba_string = resolved_data['kociemba']
-        twoPhase = tp.solve(kociemba_string, 5, 5)
+        self.kociemba_string = resolved_data['kociemba']
 
         def update_ui():
             # Render colorresolver cube output with exact sticker colors
@@ -442,7 +484,7 @@ class WebcamApp:
                     face_color_map[side_name] = f"#{int(c['red']):02x}{int(c['green']):02x}{int(c['blue']):02x}"
 
             # Layout from kociemba: URFDLB -> faces U, R, F, D, L, B
-            kociemba = kociemba_string.strip()
+            kociemba = self.kociemba_string.strip()
             face_order = ['U', 'R', 'F', 'D', 'L', 'B']
             face_squares = {}
             if len(kociemba) >= 54:
@@ -465,12 +507,8 @@ class WebcamApp:
                     color = face_color_map.get(cube_face_letter, face_color_map.get(face_name, '#fff'))
                     canvas.create_rectangle(x, y, x + cell_size, y + cell_size, fill=color, outline="#000")
 
-            self.solution = twoPhase
-            solution = (twoPhase.split(' '))[:-1]
-            steps = len(solution)
-    
-            self.result_line.config(text=f"Kociemba: {kociemba_string} \nSolution: {twoPhase} \nMoves: {str(steps)}")
-            
+            self.cube_line.insert(0, self.kociemba_string)
+                        
             log("Scan complete.")
 
         def resume_after_ui():

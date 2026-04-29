@@ -36,6 +36,7 @@ PROBE_READS = 3                      # read a few frames (some cams return 1st f
 BLACK_MEAN_THRESHOLD = 1.0           # below this = treat as "black frame"
 # -----------------------
 
+tmp_dir = Path('tmp')
 
 class WebcamApp:
     def __init__(self, root):
@@ -190,8 +191,6 @@ class WebcamApp:
         SolveCube(self.solution)
 
     def run_scan_thread(self):
-        tmp_dir = Path('tmp')
-
         # load the six faces from captured photos
         list_colors = []
         for side_name in ("U", "L", "F", "R", "B", "D"):

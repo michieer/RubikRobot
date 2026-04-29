@@ -100,7 +100,7 @@ class CubieCube:
 
     def to_facelet_cube(self):
         """Return a facelet representation of the cube."""
-        fc = twophase.face.FaceCube()
+        fc = analyzeCube.twophase.face.FaceCube()
         for i in Co:
             j = self.cp[i]  # corner j is at corner position i
             ori = self.co[i]  # orientation of C j at position i

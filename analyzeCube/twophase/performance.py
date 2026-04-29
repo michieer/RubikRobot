@@ -4,26 +4,38 @@ import analyzeCube.twophase.cubie as cubie
 
 def test(n, t):
     """
-    :param n: The number of generated random cubes
-    :param t: The time in seconds to spend on each cube
-    :return: A dictionary with the solving statistics
+    Generate n random cubes and solve them with the two-phase solver.
+    
+    :param n: Number of random cubes
+    :param t: Maximum time in seconds for each cube to find an optimal solution
+    :return: Tuple with average move count and dict of move counts
     """
     cc = cubie.CubieCube()
-    cnt = [0] * 31
+    cnt = [0] * 31  # counts for 0..30 moves
+
+    total_moves = 0
     for i in range(n):
         cc.randomize()
         fc = cc.to_facelet_cube()
         s = fc.to_string()
-        print(s)
-        s = sv.solve(s, 0, t)
-        print(s)
-        print()
-        cnt[int(s.split('(')[1].split('f')[0])] += 1
-    avr = 0
-    for i in range(31):
-        avr += i*cnt[i]
-    avr /= n
-    return 'average ' + '%.2f' % avr + ' moves', dict(zip(range(31), cnt))
+        print("Cube string:", s)
+
+        # Solve with maxDepth=31 for optimal search
+        q = sv.solve(s, 31, t)
+        print("Solution:", q)
+
+        # Count moves robustly
+        moves = len(q.split())  # split by spaces
+        total_moves += moves
+
+        # Cap moves at 30 for statistics
+        index = min(moves, 30)
+        cnt[index] += 1
+
+        print(f"Moves counted: {moves}\n")
+
+    avr = total_moves / n
+    return f'average {avr:.2f} moves', dict(zip(range(31), cnt))
 
 # test results on AMD Ryzen 7 3700X 3.59 GHz:
 
@@ -43,3 +55,10 @@ def test(n, t):
 
 # For comparison: Tomas Rokicki 2010 solved 1.000.000 random cubes *optimally* on a machine with 256 GB of RAM
 # {11: 0, 12: 1, 13: 14, 14: 172, 15: 2063, 16: 26448, 17: 267027, 18: 670407, 19: 33868, 20: 0}, average 17.71 moves
+
+def getCubeString():
+    cc = cubie.CubieCube()
+    cc.randomize()
+    fc = cc.to_facelet_cube()
+    s = fc.to_string()
+    return s

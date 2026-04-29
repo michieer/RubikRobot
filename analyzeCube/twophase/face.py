@@ -2,7 +2,7 @@
 
 from analyzeCube.twophase.defs import cornerFacelet, edgeFacelet, cornerColor, edgeColor
 from analyzeCube.twophase.enums import Color, Corner, Edge
-import analyzeCube.twophase.cubie
+import analyzeCube.twophase.cubie as cubie
 
 
 class FaceCube:
@@ -85,7 +85,7 @@ class FaceCube:
 
     def to_cubie_cube(self):
         """Return a cubie representation of the facelet cube."""
-        cc = analyzeCube.twophase.cubie.CubieCube()
+        cc = cubie.CubieCube()
         cc.cp = [-1] * 8  # invalidate corner and edge permutation
         cc.ep = [-1] * 12
         for i in Corner:
